@@ -92,6 +92,14 @@ public:
 		std::visit(visitor,expr->var);
 	}
 
+	void build_scope(const NodeScope* scope) {
+		begin_scope();
+		for (auto stmnt:scope->stmnts) {
+			build_statement(stmnt);
+		}
+		end_scope();
+	}
+
 	void build_statement(const NodeStatement* stmnt) {
 		struct StatementVisitor {
 			Assembler& assembler;
@@ -110,14 +118,16 @@ public:
 				assembler.build_expr(stmnt_let->expr);
 			}
 			void operator()(const NodeScope* scope) const {
-				assembler.begin_scope();
-				for (auto stmnt:scope->stmnts) {
-					assembler.build_statement(stmnt);
-				}
-				assembler.end_scope();
+				assembler.build_scope(scope);
 			}
 			void operator()(const NodeStatementIf* stmnt_if) const {
-				// assert(false);
+				assembler.build_expr(stmnt_if->expr);
+				assembler.pop("rax");
+				std::string label=assembler.create_label();
+				assembler.m_result<<tab<<"test rax, rax\n";
+				assembler.m_result<<tab<<"jz "<<label<<"\n";
+				assembler.build_scope(stmnt_if->scope);
+				assembler.m_result<<label<<":\n";
 			}
 		};
 
@@ -167,6 +177,12 @@ private:
 		m_scopes.pop_back();
 	}
 
+	std::string create_label() {
+		std::stringstream label;
+		label<<"label_"<<m_label_count++;
+		return label.str();
+	}
+
 	bool has_variable(std::string name) {
 		for (Variable var:m_vars) {
 			if (var.name==name) {
@@ -191,4 +207,5 @@ private:
 	size_t m_stack_size=0;
 	std::vector<Variable> m_vars {};
 	std::vector<size_t> m_scopes {};
+	int m_label_count=0;
 };
