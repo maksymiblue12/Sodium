@@ -170,6 +170,7 @@ public:
 
 	std::optional<NodeScope*> parse_scope() {
 		if (check_token(TokenType::open_curly)) {
+			pop();
 			std::vector<NodeStatement*> stmnts;
 			while (auto stmnt=parse_statement()) {
 				stmnts.push_back(stmnt.value());

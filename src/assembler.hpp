@@ -110,7 +110,11 @@ public:
 				assembler.build_expr(stmnt_let->expr);
 			}
 			void operator()(const NodeScope* scope) const {
-				assert(false);
+				assembler.begin_scope();
+				for (auto stmnt:scope->stmnts) {
+					assembler.build_statement(stmnt);
+				}
+				assembler.end_scope();
 			}
 		};
 
@@ -146,6 +150,20 @@ private:
 		m_stack_size--;
 	}
 
+	void begin_scope() {
+		m_scopes.push_back(m_vars.size());
+	}
+
+	void end_scope() {
+		size_t diff=m_vars.size()-m_scopes.back();
+		m_result<<tab<<"add rsp,"<<diff*8<<"\n";
+		m_stack_size-=diff;
+		for (int i=0;i<diff;i++) {
+			m_vars.pop_back();
+		}
+		m_scopes.pop_back();
+	}
+
 	bool has_variable(std::string name) {
 		for (Variable var:m_vars) {
 			if (var.name==name) {
@@ -169,4 +187,5 @@ private:
 	std::stringstream m_result;
 	size_t m_stack_size=0;
 	std::vector<Variable> m_vars {};
+	std::vector<size_t> m_scopes {};
 };
