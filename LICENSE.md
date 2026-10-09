@@ -1,4 +1,4 @@
-ÓMIT License
+MIT License
 
 Copyright (c) 2026 maksymiblue12
 
