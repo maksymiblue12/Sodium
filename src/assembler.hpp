@@ -116,6 +116,9 @@ public:
 				}
 				assembler.end_scope();
 			}
+			void operator()(const NodeStatementIf* stmnt_if) const {
+				assert(false);
+			}
 		};
 
 		StatementVisitor visitor{.assembler=*this};

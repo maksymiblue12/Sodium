@@ -1,7 +1,6 @@
 let x=15;
-{
+if (x) {
 	let y=69;
 	exit(y);
 }
-let y=x+5;
-exit(y);
+exit(x);

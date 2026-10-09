@@ -2,6 +2,7 @@
 
 enum TokenType {
 	t_exit,
+	t_if,
 	int_lit,
 	let,
 	identifier,
@@ -55,6 +56,9 @@ public:
 					buffer.clear();
 				} else if (buffer=="let") {
 					tokens.push_back(Token{.type=TokenType::let});
+					buffer.clear();
+				} else if (buffer=="if") {
+					tokens.push_back(Token{.type=TokenType::t_if,.value=buffer});
 					buffer.clear();
 				} else {
 					tokens.push_back(Token{.type=TokenType::identifier,.value=buffer});

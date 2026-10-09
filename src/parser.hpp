@@ -65,8 +65,13 @@ struct NodeStatementLet {
 	NodeExpr* expr;
 };
 
+struct NodeStatementIf {
+	NodeExpr* expr;
+	NodeScope* scope;
+};
+
 struct NodeStatement {
-	std::variant<NodeStatementExit*,NodeStatementLet*,NodeScope*> statement;
+	std::variant<NodeStatementExit*,NodeStatementLet*,NodeScope*,NodeStatementIf*> statement;
 };
 
 struct NodeProgram {
@@ -188,37 +193,65 @@ public:
 		if (check_token(TokenType::t_exit)) {
 			pop();
 			check_open_paren();
-			if (auto expr=parse_expr()) {
-				check_close_paren();
-				check_semi();
-				auto node_exit=m_allocator.alloc<NodeStatementExit>();
-				node_exit->expr=expr.value();
-				auto stmnt=m_allocator.alloc<NodeStatement>();
-				stmnt->statement=node_exit;
-				return stmnt;
-			} else {
-				std::cerr<<"Expected expression!\n";
+
+			std::optional<NodeExpr*> expr=parse_expr();
+			if (!expr.has_value()) {
+				std::cerr<<"Expected expression\n";
 				exit(1);
 			}
-		} else if (check_token(TokenType::let)&&check_token(TokenType::identifier,1)&&check_token(TokenType::sign_eq,2)) {
+			check_close_paren();
+			check_semi();
+
+			auto node_exit=m_allocator.alloc<NodeStatementExit>();
+			node_exit->expr=expr.value();
+			auto stmnt=m_allocator.alloc<NodeStatement>();
+			stmnt->statement=node_exit;
+			return stmnt;
+		} else if (check_token(TokenType::let)) {
 			pop();
-			Token identifier=pop();
-			pop();
-			if (auto expr=parse_expr()) {
-				check_semi();
-				auto node_let=m_allocator.alloc<NodeStatementLet>();
-				node_let->identifier=identifier;
-				node_let->expr=expr.value();
-				auto stmnt=m_allocator.alloc<NodeStatement>();
-				stmnt->statement=node_let;
-				return stmnt;
-			} else {
-				std::cerr<<"Expected expression!\n";
+			Token identifier=check_syntax(TokenType::identifier,"Expected identifier");
+			check_syntax(TokenType::sign_eq,"=");
+
+			std::optional<NodeExpr*> expr=parse_expr();
+			if (!expr.has_value()) {
+				std::cerr<<"Expected expression\n";
 				exit(1);
 			}
+			check_semi();
+
+			auto node_let=m_allocator.alloc<NodeStatementLet>();
+			node_let->identifier=identifier;
+			node_let->expr=expr.value();
+			auto stmnt=m_allocator.alloc<NodeStatement>();
+			stmnt->statement=node_let;
+			return stmnt;
 		} else if (auto scope=parse_scope()) {
 			auto stmnt=m_allocator.alloc<NodeStatement>();
 			stmnt->statement=scope.value();
+			return stmnt;
+		} else if (check_token(TokenType::t_if)) {
+			pop();
+			check_open_paren();
+
+			std::optional<NodeExpr*> expr=parse_expr();
+			if (!expr.has_value()) {
+				std::cerr<<"Expected expression\n";
+				exit(1);
+			}
+			check_close_paren();
+
+			std::optional<NodeScope*> scope=parse_scope();
+			if (!scope.has_value()) {
+				std::cerr<<"Expected expression\n";
+				exit(1);
+			}
+
+
+			auto node_if=m_allocator.alloc<NodeStatementIf>();
+			node_if->expr=expr.value();
+			node_if->scope=scope.value();
+			auto stmnt=m_allocator.alloc<NodeStatement>();
+			stmnt->statement=node_if;
 			return stmnt;
 		} else {
 			return {};
@@ -259,12 +292,20 @@ private:
 		return peek(offset).has_value()&&peek(offset).value().type==t_type;
 	}
 
-	void check_syntax(TokenType t_type, char c, int offset=0) {
+	Token check_syntax(TokenType t_type, char c, int offset=0) {
 		if (!check_token(t_type,offset)) {
 			std::cerr<<"Expected: '"<<c<<"'\n";
 			exit(1);
 		}
-		pop();
+		return pop();
+	}
+
+	Token check_syntax(TokenType t_type, std::string msg, int offset=0) {
+		if (!check_token(t_type,offset)) {
+			std::cerr<<msg<<"'\n";
+			exit(1);
+		}
+		return pop();
 	}
 
 	void check_open_paren(int offset=0) {
