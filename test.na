@@ -1,6 +1,10 @@
-let x=15;
-if (x) {
-	let y=69;
-	exit(y);
+let y=18;
+let x=5;
+// hello
+if (x-5) {
+	exit(69);
+} elif (y-18) {
+	exit(68);
+} else {
+	exit(66);
 }
-exit(x);

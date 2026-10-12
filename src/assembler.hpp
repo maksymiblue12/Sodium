@@ -100,6 +100,33 @@ public:
 		end_scope();
 	}
 
+	void build_if_pred(const NodeIfPred* if_pred,std::string end_label) {
+		struct IfPredicateVisitor {
+			Assembler& assembler;
+			std::string end_label;
+			void operator()(const NodeIfPredElif* node_elif) const {
+				assembler.build_expr(node_elif->expr);
+				assembler.pop("rax");
+				std::string label=assembler.create_label();
+				assembler.m_result<<tab<<"test rax, rax\n";
+				assembler.m_result<<tab<<"jz "<<label<<"\n";
+				assembler.build_scope(node_elif->scope);
+				assembler.m_result<<tab<<"jmp "<<end_label<<"\n";
+				assembler.m_result<<"\n";
+				assembler.m_result<<label<<":\n";
+				if (node_elif->pred.has_value()) {
+					assembler.build_if_pred(node_elif->pred.value(),end_label);
+				}
+			}
+			void operator()(const NodeIfPredElse* node_else) const {
+				assembler.build_scope(node_else->scope);
+			}
+		};
+
+		IfPredicateVisitor visitor{.assembler=*this,.end_label=end_label};
+		std::visit(visitor,if_pred->pred);
+	}
+
 	void build_statement(const NodeStatement* stmnt) {
 		struct StatementVisitor {
 			Assembler& assembler;
@@ -124,10 +151,18 @@ public:
 				assembler.build_expr(stmnt_if->expr);
 				assembler.pop("rax");
 				std::string label=assembler.create_label();
+				std::string end_label=assembler.create_label();
 				assembler.m_result<<tab<<"test rax, rax\n";
 				assembler.m_result<<tab<<"jz "<<label<<"\n";
 				assembler.build_scope(stmnt_if->scope);
+				assembler.m_result<<tab<<"jmp "<<end_label<<"\n";
+				assembler.m_result<<"\n";
 				assembler.m_result<<label<<":\n";
+				if (stmnt_if->pred.has_value()) {
+					assembler.build_if_pred(stmnt_if->pred.value(),end_label);
+				}
+				assembler.m_result<<"\n";
+				assembler.m_result<<end_label<<":\n";
 			}
 		};
 

@@ -56,6 +56,22 @@ struct NodeScope {
 };
 
 
+struct NodeIfPred;
+
+struct NodeIfPredElif {
+	NodeExpr* expr;
+	NodeScope* scope;
+	std::optional<NodeIfPred*> pred;
+};
+
+struct NodeIfPredElse {
+	NodeScope* scope;
+};
+
+struct NodeIfPred {
+	std::variant<NodeIfPredElif*,NodeIfPredElse*> pred;
+};
+
 struct NodeStatementExit {
 	NodeExpr* expr;
 };
@@ -68,6 +84,7 @@ struct NodeStatementLet {
 struct NodeStatementIf {
 	NodeExpr* expr;
 	NodeScope* scope;
+	std::optional<NodeIfPred*> pred;
 };
 
 struct NodeStatement {
@@ -184,9 +201,53 @@ public:
 			auto scope=m_allocator.alloc<NodeScope>();
 			scope->stmnts=stmnts;
 			return scope;
-		} else {
-			return {};
 		}
+		return {};
+	}
+
+	std::optional<NodeIfPred*> parse_if_pred() {
+		if (check_token(TokenType::elif)) {
+			pop();
+			check_open_paren();
+
+			std::optional<NodeExpr*> expr=parse_expr();
+			if (!expr.has_value()) {
+				std::cerr<<"Expected expression\n";
+				exit(1);
+			}
+			check_close_paren();
+
+			std::optional<NodeScope*> scope=parse_scope();
+			if (!scope.has_value()) {
+				std::cerr<<"Expected expression\n";
+				exit(1);
+			}
+
+
+			auto node_elif=m_allocator.alloc<NodeIfPredElif>();
+			node_elif->expr=expr.value();
+			node_elif->scope=scope.value();
+			node_elif->pred=parse_if_pred();
+
+			auto if_pred=m_allocator.alloc<NodeIfPred>();
+			if_pred->pred=node_elif;
+			return if_pred;
+		} else if (check_token(TokenType::t_else)) {
+			pop();
+
+			std::optional<NodeScope*> scope=parse_scope();
+			if (!scope.has_value()) {
+				std::cerr<<"Expected expression\n";
+				exit(1);
+			}
+
+			auto node_else=m_allocator.alloc<NodeIfPredElse>();
+			node_else->scope=scope.value();
+			auto if_pred=m_allocator.alloc<NodeIfPred>();
+			if_pred->pred=node_else;
+			return if_pred;
+		}
+		return {};
 	}
 
 	std::optional<NodeStatement*> parse_statement() {
@@ -250,12 +311,13 @@ public:
 			auto node_if=m_allocator.alloc<NodeStatementIf>();
 			node_if->expr=expr.value();
 			node_if->scope=scope.value();
+			node_if->pred=parse_if_pred();
+
 			auto stmnt=m_allocator.alloc<NodeStatement>();
 			stmnt->statement=node_if;
 			return stmnt;
-		} else {
-			return {};
 		}
+		return {};
 	}
 
 	NodeProgram parse() {

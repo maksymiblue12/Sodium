@@ -3,6 +3,8 @@
 enum TokenType {
 	t_exit,
 	t_if,
+	elif,
+	t_else,
 	int_lit,
 	let,
 	identifier,
@@ -60,6 +62,12 @@ public:
 				} else if (buffer=="if") {
 					tokens.push_back(Token{.type=TokenType::t_if,.value=buffer});
 					buffer.clear();
+				} else if (buffer=="elif") {
+					tokens.push_back(Token{.type=TokenType::elif,.value=buffer});
+					buffer.clear();
+				} else if (buffer=="else") {
+					tokens.push_back(Token{.type=TokenType::t_else,.value=buffer});
+					buffer.clear();
 				} else {
 					tokens.push_back(Token{.type=TokenType::identifier,.value=buffer});
 					buffer.clear();
@@ -73,9 +81,30 @@ public:
 				tokens.push_back(Token{.type=TokenType::int_lit,.value=buffer});
 				buffer.clear();
 				continue;
-			}
-
-			if (isspace(peek().value())) {
+			} else if (peek().value()=='/'&&peek(1).has_value()&&peek(1).value()=='/') {
+				pop();
+				pop();
+				while (peek().has_value()&&peek().value()!='\n') pop();
+				continue;
+			} else if (peek().value()=='/'&&peek(1).has_value()&&peek(1).value()=='*') {
+				pop();
+				pop();
+				bool finished_correctly=false;
+				while (peek().has_value()) {
+					if (peek().value()=='*'&&peek(1).has_value()&&peek(1).value()=='/') {
+						pop();
+						pop();
+						finished_correctly=true;
+						break;
+					}
+					pop();
+				}
+				if (!finished_correctly) {
+					std::cerr<<"Expected '*/'\n";
+					exit(1);
+				}
+				continue;
+			} else if (isspace(peek().value())) {
 				pop();
 				continue;
 			}
