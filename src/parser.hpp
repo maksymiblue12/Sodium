@@ -87,8 +87,13 @@ struct NodeStatementIf {
 	std::optional<NodeIfPred*> pred;
 };
 
+struct NodeStatementAssignment {
+	Token identifier;
+	NodeExpr* expr;
+};
+
 struct NodeStatement {
-	std::variant<NodeStatementExit*,NodeStatementLet*,NodeScope*,NodeStatementIf*> statement;
+	std::variant<NodeStatementExit*,NodeStatementLet*,NodeScope*,NodeStatementIf*,NodeStatementAssignment*> statement;
 };
 
 struct NodeProgram {
@@ -316,6 +321,29 @@ public:
 			auto stmnt=m_allocator.alloc<NodeStatement>();
 			stmnt->statement=node_if;
 			return stmnt;
+		} else if (check_token(TokenType::identifier)) {
+			if (check_token(TokenType::sign_eq,1)) {
+				Token identifier=pop();
+				pop();
+
+				std::optional<NodeExpr*> expr=parse_expr();
+				if (!expr.has_value()) {
+					std::cerr<<"Expected expression\n";
+					exit(1);
+				}
+				check_syntax(TokenType::semi,';');
+
+				auto node_assign=m_allocator.alloc<NodeStatementAssignment>();
+				node_assign->identifier=identifier;
+				node_assign->expr=expr.value();
+
+				auto stmnt=m_allocator.alloc<NodeStatement>();
+				stmnt->statement=node_assign;
+				return stmnt;
+			} else {
+				std::cerr<<"Expected assignment operator\n";
+				exit(1);
+			}
 		}
 		return {};
 	}

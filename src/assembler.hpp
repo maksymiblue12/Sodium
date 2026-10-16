@@ -100,7 +100,7 @@ public:
 		end_scope();
 	}
 
-	void build_if_pred(const NodeIfPred* if_pred,std::string end_label) {
+	void build_if_pred(const NodeIfPred* if_pred, std::string end_label) {
 		struct IfPredicateVisitor {
 			Assembler& assembler;
 			std::string end_label;
@@ -163,6 +163,16 @@ public:
 				}
 				assembler.m_result<<"\n";
 				assembler.m_result<<end_label<<":\n";
+			}
+			void operator()(const NodeStatementAssignment* stmnt_assign) const {
+				if (!assembler.has_variable(stmnt_assign->identifier.value.value())) {
+					std::cerr<<"Variable with name '"<<stmnt_assign->identifier.value.value()<<"' does not exists!\n";
+					exit(1);
+				}
+				auto var=assembler.get_variable(stmnt_assign->identifier.value.value());
+				assembler.build_expr(stmnt_assign->expr);
+				assembler.pop("rax");
+				assembler.m_result<<tab<<"mov [rsp+"<<(assembler.m_stack_size-var.stack_location-1)*8<<"], rax\n";
 			}
 		};
 
